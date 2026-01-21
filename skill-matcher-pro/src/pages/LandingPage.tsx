@@ -41,13 +41,13 @@ const steps = [
 ];
 
 // Typing animation component
-function TypingText({ 
-  fullText, 
-  speed = 100, 
-  waitTime = 3000 
-}: { 
-  fullText: string; 
-  speed?: number; 
+function TypingText({
+  fullText,
+  speed = 100,
+  waitTime = 3000
+}: {
+  fullText: string;
+  speed?: number;
   waitTime?: number;
 }) {
   const [displayedText, setDisplayedText] = useState('');
@@ -88,7 +88,7 @@ function TypingText({
 
   // Split text to apply gradient to "What to Learn"
   const beforeGradient = "Stop Guessing ";
-  
+
   const isBeforeGradient = displayedText.length <= beforeGradient.length;
   const gradientPart = displayedText.slice(beforeGradient.length);
 
@@ -102,7 +102,7 @@ function TypingText({
           <span className="text-gradient">{gradientPart}</span>
         </>
       )}
-      <motion.span 
+      <motion.span
         className="inline-block w-1 h-[1em] align-bottom ml-1 bg-primary"
         animate={{ opacity: showCursor ? 1 : 0 }}
         transition={{ duration: 0.3 }}
@@ -137,16 +137,16 @@ export default function LandingPage() {
               Internship Readiness Made Clear
             </motion.div>
 
-            <motion.h1 
+            <motion.h1
               className="text-4xl md:text-6xl font-bold leading-tight mb-6 relative min-h-[4rem] md:min-h-[6rem] flex items-center justify-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <TypingText 
-                fullText="Stop Guessing What to Learn" 
-                speed={80} 
-                waitTime={4000} 
+              <TypingText
+                fullText="Stop Guessing What to Learn"
+                speed={80}
+                waitTime={4000}
               />
             </motion.h1>
 
@@ -166,6 +166,12 @@ export default function LandingPage() {
                 <Link to="/analyzer">
                   <Building2 className="w-5 h-5 mr-1" />
                   Company Analyzer
+                </Link>
+              </Button>
+              <Button variant="outline" size="xl" asChild>
+                <Link to="/simulator">
+                  <Target className="w-5 h-5 mr-1" />
+                  Interview Practice
                 </Link>
               </Button>
               {demoMode && (
