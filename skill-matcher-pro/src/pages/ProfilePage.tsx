@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/Header';
 import { useApp } from '@/context/AppContext';
 import { roles, skillLevels, UserSkill } from '@/lib/mockData';
-import { ArrowRight, Upload, Github, Linkedin, Plus, Check, X } from 'lucide-react';
+import { ArrowRight, Upload, Github, Linkedin, Plus, Check, X, Shield, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SkillDomain } from '@/lib/skillDomains';
 
 const allSkills = [
   { id: 'python', name: 'Python', category: 'technical' },
@@ -30,6 +32,40 @@ export default function ProfilePage() {
   const [showSkillPicker, setShowSkillPicker] = useState(false);
   const [editingSkill, setEditingSkill] = useState<string | null>(null);
   const [resumeParsed, setResumeParsed] = useState(false);
+
+  // Sync skills from "My Skills" vault
+  const syncFromVault = () => {
+    const saved = localStorage.getItem('mySkillDomains');
+    if (saved) {
+      const domains: SkillDomain[] = JSON.parse(saved);
+      const vaultSkills: UserSkill[] = domains.flatMap(domain =>
+        domain.skills
+          .filter(s => s.level > 0)
+          .map(s => ({
+            skillId: s.id,
+            name: s.name,
+            level: s.level,
+            category: 'technical' as const
+          }))
+      );
+
+      // Merge with existing userSkills, prioritizing vault skills
+      const mergedSkills = [...userSkills];
+      vaultSkills.forEach(vs => {
+        const index = mergedSkills.findIndex(ms => ms.skillId === vs.skillId);
+        if (index > -1) {
+          mergedSkills[index] = vs;
+        } else {
+          mergedSkills.push(vs);
+        }
+      });
+      setUserSkills(mergedSkills);
+    }
+  };
+
+  useState(() => {
+    syncFromVault();
+  });
 
   const role = roles.find((r) => r.id === selectedRole);
 
@@ -149,15 +185,33 @@ export default function ProfilePage() {
             className="bg-card rounded-xl border border-border p-6 mb-8"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold">Your Skills</h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSkillPicker(true)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Skill
-              </Button>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold">Your Skills</h2>
+                <Badge variant="outline" className="text-[10px] text-primary border-primary/20">
+                  <Shield className="w-2.5 h-2.5 mr-1" />
+                  Synced with Vault
+                </Badge>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={syncFromVault}
+                  className="text-xs h-8"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                  Sync
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSkillPicker(true)}
+                  className="h-8"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Skill
+                </Button>
+              </div>
             </div>
 
             {userSkills.length === 0 ? (
@@ -171,10 +225,13 @@ export default function ProfilePage() {
                     key={skill.skillId}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="p-4 rounded-lg bg-muted/50 border border-border"
+                    className="p-4 rounded-lg bg-muted/50 border border-border group"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium">{skill.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{skill.name}</span>
+                        <Shield className="w-3 h-3 text-primary/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                       <button
                         onClick={() => handleRemoveSkill(skill.skillId)}
                         className="text-muted-foreground hover:text-destructive transition-colors"
@@ -185,24 +242,28 @@ export default function ProfilePage() {
 
                     <div className="flex gap-1">
                       {skillLevels.map((level) => (
-                        <button
+                        <div
                           key={level.level}
-                          onClick={() => handleLevelChange(skill.skillId, level.level)}
                           className={cn(
-                            'flex-1 py-2 px-1 rounded text-xs font-medium transition-all',
+                            'flex-1 py-1.5 px-1 rounded text-[10px] text-center font-bold tracking-tight transition-all',
                             skill.level >= level.level
-                              ? 'gradient-hero text-primary-foreground'
-                              : 'bg-background border border-border text-muted-foreground hover:border-primary/50'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-background/50 border border-border text-muted-foreground/40'
                           )}
-                          title={level.description}
                         >
                           L{level.level}
-                        </button>
+                        </div>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {skillLevels.find((l) => l.level === skill.level)?.name}
-                    </p>
+                    <div className="flex justify-between items-center mt-2">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                        {skillLevels.find((l) => l.level === skill.level)?.name}
+                      </p>
+                      <div className="flex items-center gap-1 text-[9px] text-primary/60 font-semibold italic">
+                        <Check className="w-2.5 h-2.5" />
+                        Verified Proficiency
+                      </div>
+                    </div>
                   </motion.div>
                 ))}
               </div>

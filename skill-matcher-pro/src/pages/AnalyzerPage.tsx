@@ -5,93 +5,107 @@ import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, Briefcase, Sparkles, Loader2, Target, Users, Code, TrendingUp } from 'lucide-react';
-import { SkillDomain } from '@/lib/skillDomains';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip as RechartsTooltip } from 'recharts';
+import { Building2, Briefcase, Sparkles, Loader2, Target, Users, Code, TrendingUp, CheckCircle, AlertTriangle, BookOpen, Layers } from 'lucide-react';
+import { SkillDomain, skillLevels } from '@/lib/skillDomains';
+
+interface CompanySnapshot {
+  industry: string;
+  company_type: string;
+  hiring_nature: string;
+  role_expectations: string[];
+}
+
+interface SkillProgress {
+  skill: string;
+  level: string; // Changed to string for labels like "Intermediate", "Expert"
+}
+
+interface RadarDataPoint {
+  subject: string;
+  userLevel: number; // 0-100 or 0-4
+  requiredLevel: number; // 0-100 or 0-4
+}
+
+interface SkillMatch {
+  readiness_percent: number;
+  progress: SkillProgress[];
+  radar: RadarDataPoint[]; // Updated to array of objects with both values
+}
+
+interface GapAnalysis {
+  missing_skills: string[];
+  underdeveloped_areas: string[];
+}
+
+interface ActionPlan {
+  day_30_plan: string[];
+  resources: string[];
+  projects: string[];
+}
 
 interface AnalysisResult {
-  companyType: string;
-  companyDescription: string;
-  expectedSkills: {
-    category: string;
-    skills: string[];
-    importance: 'critical' | 'important' | 'nice-to-have';
-  }[];
-  tips: string[];
+  company_snapshot: CompanySnapshot;
+  skill_match: SkillMatch;
+  gap_analysis: GapAnalysis;
+  action_plan: ActionPlan;
 }
 
 // Webhook response interface
-interface WebhookResponse {
-  company_snapshot?: any;
-  skill_match?: any;
-  gap_analysis?: any;
-  action_plan?: any;
-  [key: string]: any; // Allow additional properties
+interface WebhookResponse extends AnalysisResult {
+  [key: string]: any;
 }
 
-// Mock analysis function - will be replaced by AI agent later
+// Mock analysis function
 const mockAnalyze = (company: string, role: string): AnalysisResult => {
-  const companyLower = company.toLowerCase();
-  
-  let companyType = 'Tech Company';
-  let companyDescription = 'A technology-focused organization with modern development practices.';
-  
-  if (companyLower.includes('google') || companyLower.includes('meta') || companyLower.includes('amazon') || companyLower.includes('microsoft') || companyLower.includes('apple')) {
-    companyType = 'FAANG / Big Tech';
-    companyDescription = 'Large-scale tech company known for rigorous technical interviews and high engineering standards. Focus on algorithms, system design, and scalable solutions.';
-  } else if (companyLower.includes('stripe') || companyLower.includes('razorpay') || companyLower.includes('paypal')) {
-    companyType = 'FinTech';
-    companyDescription = 'Financial technology company requiring strong security awareness, API design skills, and understanding of payment systems.';
-  } else if (companyLower.includes('startup') || company.length < 10) {
-    companyType = 'Startup';
-    companyDescription = 'Fast-paced environment valuing versatility, quick learning, and end-to-end ownership of features.';
-  }
-
-  const roleLower = role.toLowerCase();
-  let skills: AnalysisResult['expectedSkills'] = [];
-
-  if (roleLower.includes('backend') || roleLower.includes('server')) {
-    skills = [
-      { category: 'Core Programming', skills: ['Python', 'Java', 'Go', 'Node.js'], importance: 'critical' },
-      { category: 'Data Structures & Algorithms', skills: ['Arrays', 'Trees', 'Graphs', 'Dynamic Programming'], importance: 'critical' },
-      { category: 'Databases', skills: ['SQL', 'PostgreSQL', 'MongoDB', 'Redis'], importance: 'important' },
-      { category: 'System Design', skills: ['API Design', 'Microservices', 'Caching', 'Load Balancing'], importance: 'important' },
-      { category: 'DevOps', skills: ['Docker', 'CI/CD', 'AWS/GCP', 'Linux'], importance: 'nice-to-have' },
-    ];
-  } else if (roleLower.includes('frontend') || roleLower.includes('ui')) {
-    skills = [
-      { category: 'Core Technologies', skills: ['JavaScript', 'TypeScript', 'HTML', 'CSS'], importance: 'critical' },
-      { category: 'Frameworks', skills: ['React', 'Vue', 'Angular', 'Next.js'], importance: 'critical' },
-      { category: 'State Management', skills: ['Redux', 'Zustand', 'Context API'], importance: 'important' },
-      { category: 'UI/UX', skills: ['Responsive Design', 'Accessibility', 'Figma'], importance: 'important' },
-      { category: 'Testing', skills: ['Jest', 'Cypress', 'React Testing Library'], importance: 'nice-to-have' },
-    ];
-  } else if (roleLower.includes('ml') || roleLower.includes('machine learning') || roleLower.includes('data')) {
-    skills = [
-      { category: 'Programming', skills: ['Python', 'NumPy', 'Pandas', 'Jupyter'], importance: 'critical' },
-      { category: 'ML Fundamentals', skills: ['Linear Algebra', 'Statistics', 'Calculus'], importance: 'critical' },
-      { category: 'ML Libraries', skills: ['TensorFlow', 'PyTorch', 'Scikit-learn'], importance: 'important' },
-      { category: 'Data Engineering', skills: ['SQL', 'ETL', 'Data Pipelines'], importance: 'important' },
-      { category: 'MLOps', skills: ['Model Deployment', 'MLflow', 'Docker'], importance: 'nice-to-have' },
-    ];
-  } else {
-    skills = [
-      { category: 'Programming', skills: ['Python', 'JavaScript', 'Java'], importance: 'critical' },
-      { category: 'Problem Solving', skills: ['Data Structures', 'Algorithms', 'Logic'], importance: 'critical' },
-      { category: 'Tools', skills: ['Git', 'Linux', 'IDE proficiency'], importance: 'important' },
-      { category: 'Soft Skills', skills: ['Communication', 'Teamwork', 'Problem-solving'], importance: 'important' },
-    ];
-  }
-
   return {
-    companyType,
-    companyDescription,
-    expectedSkills: skills,
-    tips: [
-      `Research ${company}'s recent projects and tech blog posts`,
-      `Practice ${companyType === 'FAANG / Big Tech' ? 'LeetCode medium/hard' : 'fundamental coding'} problems`,
-      `Prepare examples of past projects relevant to ${role}`,
-      `Understand the company\'s products and how they make money`,
-    ],
+    company_snapshot: {
+      industry: "Technology",
+      company_type: "Tech Company",
+      hiring_nature: "Competitive",
+      role_expectations: [
+        "Strong fundamentals in Data Structures and Algorithms",
+        "Proficiency in backend development languages",
+        "Experience with APIs and databases",
+        "Familiarity with version control"
+      ]
+    },
+    skill_match: {
+      readiness_percent: 70,
+      progress: [
+        { skill: "Data Structures", level: "Intermediate" },
+        { skill: "APIs", level: "Beginner" },
+        { skill: "Databases", level: "Intermediate" },
+        { skill: "Backend Lang", level: "Advanced" }
+      ],
+      radar: [
+        { subject: "Frontend", userLevel: 20, requiredLevel: 40 },
+        { subject: "Backend", userLevel: 70, requiredLevel: 80 },
+        { subject: "DSA", userLevel: 60, requiredLevel: 75 },
+        { subject: "Security", userLevel: 30, requiredLevel: 50 },
+        { subject: "Cloud", userLevel: 40, requiredLevel: 60 }
+      ]
+    },
+    gap_analysis: {
+      missing_skills: ["System Design"],
+      underdeveloped_areas: ["APIs", "Cloud Deployment"]
+    },
+    action_plan: {
+      day_30_plan: [
+        "Complete a DSA challenge daily",
+        "Build a RESTful API project",
+        "Practice database design"
+      ],
+      resources: [
+        "LeetCode",
+        "MDN Web Docs",
+        "System Design Primer"
+      ],
+      projects: [
+        "Personal blog with CRUD",
+        "Task API"
+      ]
+    }
   };
 };
 
@@ -118,13 +132,13 @@ export default function AnalyzerPage() {
 
   // Format skills data for webhook payload
   const formatSkillsForWebhook = (domains: SkillDomain[]) => {
-    const allSkills = domains.flatMap(domain => 
+    const allSkills = domains.flatMap(domain =>
       domain.skills
         .filter(skill => skill.level > 0) // Only include skills with level > 0
         .map(skill => ({
           id: skill.id,
           name: skill.name,
-          level: skill.level,
+          level: skillLevels[skill.level].label, // Send label instead of number
           domain: domain.name,
           domainId: domain.id
         }))
@@ -134,11 +148,11 @@ export default function AnalyzerPage() {
 
   const handleAnalyze = async () => {
     if (!companyName.trim() || !roleName.trim()) return;
-    
+
     setIsAnalyzing(true);
     setError(null);
     setWebhookResponse(null);
-    
+
     try {
       // Get MY SKILLS data
       const skillDomains = getMySkillsData();
@@ -197,7 +211,7 @@ export default function AnalyzerPage() {
         const contentType = response.headers.get('content-type');
         const responseText = await response.text();
         console.log('Response body:', responseText);
-        
+
         if (contentType && contentType.includes('application/json')) {
           webhookResult = JSON.parse(responseText) as WebhookResponse;
         } else if (responseText) {
@@ -212,26 +226,64 @@ export default function AnalyzerPage() {
         console.log('Error parsing webhook response, using mock analysis:', parseError);
       }
 
-      // Store the full webhook response
-      if (webhookResult) {
-        console.log('Storing webhook response:', webhookResult);
-        setWebhookResponse(webhookResult);
-      }
+      // Helper to clean indexed strings and ensure array type
+      const sanitizeList = (input: any): string[] => {
+        if (!input) return [];
+        let arr: any[] = [];
+        if (Array.isArray(input)) {
+          arr = input;
+        } else if (typeof input === 'object') {
+          // Handle object with numeric keys { "0": "...", "1": "..." }
+          arr = Object.keys(input)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map(key => input[key]);
+        } else if (typeof input === 'string') {
+          arr = [input];
+        }
 
-      // Use webhook result if available, otherwise fall back to mock
-      if (webhookResult && webhookResult.companyType) {
-        console.log('Using webhook result:', webhookResult);
-        setResult(webhookResult);
+        return arr.map(item => {
+          const str = String(item);
+          // Remove leading "0:", "1:", "0. ", etc.
+          return str.replace(/^\d+[:.]\s*/, '').trim();
+        }).filter(Boolean);
+      };
+
+      // Store the full webhook response with sanitization
+      if (webhookResult) {
+        const sanitized: WebhookResponse = {
+          ...webhookResult,
+          company_snapshot: {
+            ...(webhookResult.company_snapshot || {}),
+            role_expectations: sanitizeList(webhookResult.company_snapshot?.role_expectations)
+          },
+          action_plan: {
+            ...(webhookResult.action_plan || {}),
+            day_30_plan: sanitizeList(webhookResult.action_plan?.day_30_plan),
+            resources: sanitizeList(webhookResult.action_plan?.resources),
+            projects: sanitizeList(webhookResult.action_plan?.projects)
+          }
+        };
+
+        console.log('Storing sanitized webhook response:', sanitized);
+        setWebhookResponse(sanitized);
+
+        if (sanitized.company_snapshot && sanitized.company_snapshot.industry) {
+          console.log('Using webhook result:', sanitized);
+          setResult(sanitized);
+        } else {
+          console.log('Webhook did not return valid result, using mock analysis');
+          const analysis = mockAnalyze(companyName, roleName);
+          setResult(analysis);
+        }
       } else {
-        console.log('Webhook did not return valid result, using mock analysis');
-        // Fallback to mock analysis
+        console.log('No webhook result, using mock analysis');
         const analysis = mockAnalyze(companyName, roleName);
         setResult(analysis);
       }
     } catch (error) {
       console.error('Error calling webhook:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
+      const errorMessage = error instanceof Error
+        ? error.message
         : 'Failed to connect to webhook. Check console for details.';
       setError(errorMessage);
       // Fallback to mock analysis on error
@@ -242,14 +294,7 @@ export default function AnalyzerPage() {
     }
   };
 
-  const getImportanceBadge = (importance: string) => {
-    const styles = {
-      critical: 'bg-status-danger/10 text-status-danger border-status-danger/20',
-      important: 'bg-status-warning/10 text-status-warning border-status-warning/20',
-      'nice-to-have': 'bg-status-success/10 text-status-success border-status-success/20',
-    };
-    return styles[importance as keyof typeof styles] || styles['nice-to-have'];
-  };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -344,90 +389,211 @@ export default function AnalyzerPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
+              className="space-y-8"
             >
-              {/* Company Type Card */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl gradient-hero flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-6 h-6 text-primary-foreground" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold">{companyName}</h3>
-                      <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                        {result.companyType}
-                      </span>
+              {/* 1. Company Snapshot */}
+              <section className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-bold">Company Snapshot</h2>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-card rounded-xl border border-border p-5">
+                    <div className="space-y-4">
+                      <div>
+                        <span className="text-sm text-muted-foreground block mb-1">Industry</span>
+                        <div className="font-semibold">{result.company_snapshot.industry}</div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-muted-foreground block mb-1">Company Type</span>
+                        <div className="font-semibold">{result.company_snapshot.company_type}</div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-muted-foreground block mb-1">Hiring Nature</span>
+                        <div className="font-semibold">{result.company_snapshot.hiring_nature}</div>
+                      </div>
                     </div>
-                    <p className="text-muted-foreground">{result.companyDescription}</p>
+                  </div>
+                  <div className="bg-card rounded-xl border border-border p-5">
+                    <span className="text-sm text-muted-foreground block mb-3">Role Expectations</span>
+                    <ul className="space-y-2">
+                      {result.company_snapshot.role_expectations.map((exp, i) => (
+                        <li key={i} className="flex gap-2 text-sm">
+                          <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                          <span>{exp}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              {/* Expected Skills */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <Code className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Expected Skills for {roleName}</h3>
+              {/* 2. Skill Match */}
+              <section className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-bold">Skill Match</h2>
                 </div>
 
-                <div className="space-y-6">
-                  {result.expectedSkills.map((category, index) => (
-                    <motion.div
-                      key={category.category}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <h4 className="font-medium">{category.category}</h4>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getImportanceBadge(category.importance)}`}>
-                          {category.importance.replace('-', ' ')}
+                <div className="grid md:grid-cols-2 gap-6 bg-card rounded-xl border border-border p-6">
+                  {/* Readiness & Radar */}
+                  <div className="space-y-6">
+                    <div>
+                      <span className="text-sm text-muted-foreground block mb-2">Readiness Score</span>
+                      <div className="flex items-end gap-2">
+                        <span className="text-4xl font-bold text-primary">{result.skill_match.readiness_percent}%</span>
+                        <span className="text-sm text-muted-foreground mb-1">match</span>
+                      </div>
+                      <div className="h-2 w-full bg-secondary rounded-full mt-2 overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-1000 ease-out"
+                          style={{ width: `${result.skill_match.readiness_percent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="h-[300px] w-full -ml-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={result.skill_match.radar}>
+                          <PolarGrid stroke="hsl(var(--muted-foreground))" strokeOpacity={0.2} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+
+                          <Radar
+                            name="My Skills"
+                            dataKey="userLevel"
+                            stroke="#3b82f6"
+                            fill="#3b82f6"
+                            fillOpacity={0.3}
+                          />
+                          <Radar
+                            name="Required"
+                            dataKey="requiredLevel"
+                            stroke="#f97316"
+                            fill="#f97316"
+                            fillOpacity={0.3}
+                          />
+
+                          <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                          <RechartsTooltip
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--popover))',
+                              borderColor: 'hsl(var(--border))',
+                              borderRadius: '8px',
+                              color: 'hsl(var(--popover-foreground))',
+                              fontSize: '12px'
+                            }}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Skills List with Levels */}
+                  <div className="space-y-4">
+                    <span className="text-sm font-medium block">Key Skills Breakdown</span>
+                    {result.skill_match.progress.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
+                        <span className="font-medium text-sm">{item.skill}</span>
+                        <div className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${item.level.toLowerCase().includes('expert') || item.level.includes('4') ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' :
+                          item.level.toLowerCase().includes('advanced') || item.level.includes('3') ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                            item.level.toLowerCase().includes('intermediate') || item.level.includes('2') ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                              'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                          }`}>
+                          {item.level}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* 3. Gap Analysis */}
+              <section className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-bold">Gap Analysis</h2>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-destructive/5 rounded-xl border border-destructive/10 p-5">
+                    <h3 className="font-semibold text-destructive mb-3 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" /> Missing Skills
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {result.gap_analysis.missing_skills.map((skill, i) => (
+                        <span key={i} className="px-3 py-1 bg-background rounded-md text-sm border border-destructive/20 text-destructive">
+                          {skill}
                         </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {category.skills.map((skill) => (
-                          <span
-                            key={skill}
-                            className="px-3 py-1.5 rounded-lg bg-muted text-sm font-medium"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))}
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-orange-500/5 rounded-xl border border-orange-500/10 p-5">
+                    <h3 className="font-semibold text-orange-600 mb-3 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" /> Underdeveloped Areas
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {result.gap_analysis.underdeveloped_areas.map((area, i) => (
+                        <span key={i} className="px-3 py-1 bg-background rounded-md text-sm border border-orange-500/20 text-orange-600">
+                          {area}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </section>
 
-              {/* Tips */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Preparation Tips</h3>
+              {/* 4. Action Plan */}
+              <section className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-bold">Action Plan</h2>
                 </div>
-                <ul className="space-y-3">
-                  {result.tips.map((tip, index) => (
-                    <motion.li
-                      key={index}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + index * 0.1 }}
-                      className="flex items-start gap-3"
-                    >
-                      <Target className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                      <span className="text-muted-foreground">{tip}</span>
-                    </motion.li>
-                  ))}
-                </ul>
-              </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="bg-card rounded-xl border border-border p-5">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <Target className="w-4 h-4 text-primary" /> 30-Day Plan
+                    </h3>
+                    <ul className="space-y-2">
+                      {result.action_plan.day_30_plan.map((item, i) => (
+                        <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                          <span className="text-primary font-bold">•</span> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="bg-card rounded-xl border border-border p-5">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-primary" /> Resources
+                    </h3>
+                    <ul className="space-y-2">
+                      {result.action_plan.resources.map((item, i) => (
+                        <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                          <span className="text-primary font-bold">•</span> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="bg-card rounded-xl border border-border p-5">
+                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-primary" /> Recommended Projects
+                    </h3>
+                    <ul className="space-y-2">
+                      {result.action_plan.projects.map((item, i) => (
+                        <li key={i} className="text-sm text-muted-foreground flex gap-2">
+                          <span className="text-primary font-bold">•</span> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </section>
 
               {/* CTA */}
-              <div className="flex justify-center gap-4">
+              <div className="flex justify-center gap-4 pt-6">
                 <Button variant="outline" asChild>
-                  <Link to="/select">Use Skill Alignment Flow</Link>
+                  <Link to="/select">Update My Skills</Link>
                 </Button>
-                <Button variant="hero" onClick={() => { setResult(null); setCompanyName(''); setRoleName(''); }}>
+                <Button variant="hero" onClick={() => { setResult(null); setWebhookResponse(null); }}>
                   Analyze Another
                 </Button>
               </div>

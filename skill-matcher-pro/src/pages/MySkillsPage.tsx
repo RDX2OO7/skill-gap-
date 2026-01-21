@@ -7,11 +7,21 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
-import { 
+import {
   Code, Database, Brain, Shield, Cloud, Smartphone, Sparkles, Cpu,
-  ChevronRight, Plus, X, Trash2, Save, ArrowLeft, Star, Zap
+  ChevronRight, Plus, X, Trash2, Save, ArrowLeft, Star, Zap, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { defaultDomains, skillLevels, SkillDomain, SkillItem } from '@/lib/skillDomains';
+import { getQuestionsForSkill, Question } from '@/lib/skillQuestions';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { toast } from 'sonner';
 
 const iconMap: Record<string, React.ComponentType<any>> = {
   Code, Database, Brain, Shield, Cloud, Smartphone, Sparkles, Cpu
@@ -26,6 +36,16 @@ export default function MySkillsPage() {
   const [newSkillName, setNewSkillName] = useState('');
   const [addingToDomain, setAddingToDomain] = useState<string | null>(null);
 
+  // Quiz State
+  const [activeQuiz, setActiveQuiz] = useState<{
+    domainId: string;
+    skill: SkillItem;
+    questions: Question[];
+  } | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<number[]>([]);
+  const [quizFinished, setQuizFinished] = useState(false);
+
   useEffect(() => {
     localStorage.setItem('mySkillDomains', JSON.stringify(domains));
   }, [domains]);
@@ -35,7 +55,7 @@ export default function MySkillsPage() {
       if (domain.id !== domainId) return domain;
       return {
         ...domain,
-        skills: domain.skills.map(skill => 
+        skills: domain.skills.map(skill =>
           skill.id === skillId ? { ...skill, level } : skill
         )
       };
@@ -44,7 +64,7 @@ export default function MySkillsPage() {
 
   const addCustomSkill = (domainId: string) => {
     if (!newSkillName.trim()) return;
-    
+
     setDomains(prev => prev.map(domain => {
       if (domain.id !== domainId) return domain;
       return {
@@ -52,12 +72,50 @@ export default function MySkillsPage() {
         skills: [...domain.skills, {
           id: `custom-${Date.now()}`,
           name: newSkillName.trim(),
-          level: 1
+          level: 0
         }]
       };
     }));
     setNewSkillName('');
     setAddingToDomain(null);
+  };
+
+  const startQuiz = (domainId: string, skill: SkillItem) => {
+    const questions = getQuestionsForSkill(skill.id);
+    setActiveQuiz({ domainId, skill, questions });
+    setCurrentQuestionIndex(0);
+    setAnswers([]);
+    setQuizFinished(false);
+  };
+
+  const handleAnswer = (answerIndex: number) => {
+    const newAnswers = [...answers, answerIndex];
+    setAnswers(newAnswers);
+
+    if (currentQuestionIndex < activeQuiz!.questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    } else {
+      finishQuiz(newAnswers);
+    }
+  };
+
+  const finishQuiz = (finalAnswers: number[]) => {
+    const score = finalAnswers.reduce((acc, ans, idx) => {
+      return acc + (ans === activeQuiz!.questions[idx].correctAnswer ? 1 : 0);
+    }, 0);
+
+    // Calculate level based on score (0-5)
+    // 0: None, 1: Beginner, 2: Intermediate, 3-4: Advanced, 5: Expert
+    let newLevel = 0;
+    if (score === 1 || score === 2) newLevel = 1;
+    else if (score === 3) newLevel = 2;
+    else if (score === 4) newLevel = 3;
+    else if (score === 5) newLevel = 4;
+
+    updateSkillLevel(activeQuiz!.domainId, activeQuiz!.skill.id, newLevel);
+    setQuizFinished(true);
+
+    toast.success(`Quiz completed! Your score: ${score}/${activeQuiz!.questions.length}. Level set to ${skillLevels[newLevel].label}.`);
   };
 
   const removeSkill = (domainId: string, skillId: string) => {
@@ -73,8 +131,8 @@ export default function MySkillsPage() {
   const getDomainStats = (domain: SkillDomain) => {
     const totalSkills = domain.skills.length;
     const learnedSkills = domain.skills.filter(s => s.level > 0).length;
-    const avgLevel = totalSkills > 0 
-      ? domain.skills.reduce((acc, s) => acc + s.level, 0) / totalSkills 
+    const avgLevel = totalSkills > 0
+      ? domain.skills.reduce((acc, s) => acc + s.level, 0) / totalSkills
       : 0;
     return { totalSkills, learnedSkills, avgLevel };
   };
@@ -93,7 +151,7 @@ export default function MySkillsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container mx-auto px-6 pt-24 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -156,10 +214,9 @@ export default function MySkillsPage() {
                   transition={{ delay: index * 0.05 }}
                   className={isExpanded ? 'md:col-span-2 lg:col-span-3 xl:col-span-4' : ''}
                 >
-                  <Card 
-                    className={`overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg ${
-                      isExpanded ? 'ring-2 ring-primary' : ''
-                    }`}
+                  <Card
+                    className={`overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg ${isExpanded ? 'ring-2 ring-primary' : ''
+                      }`}
                     onClick={() => !isExpanded && setExpandedDomain(domain.id)}
                   >
                     {/* Domain Header */}
@@ -175,8 +232,8 @@ export default function MySkillsPage() {
                           </div>
                         </div>
                         {isExpanded ? (
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="icon"
                             className="text-white hover:bg-white/20"
                             onClick={(e) => { e.stopPropagation(); setExpandedDomain(null); }}
@@ -244,53 +301,70 @@ export default function MySkillsPage() {
 
                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {domain.skills.map(skill => (
-                            <div 
+                            <div
                               key={skill.id}
-                              className="glass-card rounded-lg p-4 space-y-3"
+                              className="glass-card rounded-lg p-4 space-y-4 hover:shadow-md transition-shadow"
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-medium text-sm">{skill.name}</span>
-                                {skill.id.startsWith('custom-') && (
+                                <span className="font-bold text-sm tracking-tight">{skill.name}</span>
+                                <div className="flex items-center gap-1">
                                   <Button
                                     variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-destructive hover:text-destructive"
-                                    onClick={() => removeSkill(domain.id, skill.id)}
+                                    size="sm"
+                                    className="h-7 px-2 text-[10px] text-primary hover:bg-primary/10"
+                                    onClick={() => startQuiz(domain.id, skill)}
                                   >
-                                    <Trash2 className="w-3 h-3" />
+                                    <Zap className="w-3 h-3 mr-1" />
+                                    Test Level
                                   </Button>
-                                )}
+                                  {skill.id.startsWith('custom-') && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-destructive hover:text-destructive"
+                                      onClick={() => removeSkill(domain.id, skill.id)}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
-                              
-                              <Slider
-                                value={[skill.level]}
-                                onValueChange={([value]) => updateSkillLevel(domain.id, skill.id, value)}
-                                max={4}
-                                step={1}
-                                className="w-full"
-                              />
-                              
+
+                              {/* Read-only Level Indicator */}
+                              <div className="space-y-1.5">
+                                <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                                  <span>Proficiency</span>
+                                  <span>{Math.round((skill.level / 4) * 100)}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-muted rounded-full overflow-hidden flex gap-0.5 p-0.5">
+                                  {[1, 2, 3, 4].map((step) => (
+                                    <div
+                                      key={step}
+                                      className={`h-full flex-1 rounded-sm transition-colors duration-500 ${skill.level >= step
+                                          ? (skill.level === 4 ? 'bg-purple-500' :
+                                            skill.level === 3 ? 'bg-success' :
+                                              skill.level === 2 ? 'bg-warning' : 'bg-blue-500')
+                                          : 'bg-black/5'
+                                        }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+
                               <div className="flex items-center justify-between">
-                                <Badge 
+                                <Badge
                                   variant={skill.level > 0 ? 'default' : 'secondary'}
-                                  className={`text-xs ${
-                                    skill.level === 4 ? 'bg-purple-500' :
-                                    skill.level === 3 ? 'bg-success' :
-                                    skill.level === 2 ? 'bg-warning' :
-                                    skill.level === 1 ? 'bg-blue-500' : ''
-                                  }`}
+                                  className={`text-xs ${skill.level === 4 ? 'bg-purple-500' :
+                                      skill.level === 3 ? 'bg-success' :
+                                        skill.level === 2 ? 'bg-warning' :
+                                          skill.level === 1 ? 'bg-blue-500' : ''
+                                    }`}
                                 >
                                   {skillLevels[skill.level].label}
                                 </Badge>
-                                <div className="flex gap-0.5">
-                                  {[1, 2, 3, 4].map(level => (
-                                    <div 
-                                      key={level}
-                                      className={`w-2 h-2 rounded-full ${
-                                        skill.level >= level ? 'bg-primary' : 'bg-muted'
-                                      }`}
-                                    />
-                                  ))}
+                                <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                  <Shield className="w-3 h-3 text-primary/50" />
+                                  Verified via Test
                                 </div>
                               </div>
                             </div>
@@ -307,16 +381,16 @@ export default function MySkillsPage() {
                                 autoFocus
                               />
                               <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   onClick={() => addCustomSkill(domain.id)}
                                   disabled={!newSkillName.trim()}
                                 >
                                   <Save className="w-3 h-3 mr-1" />
                                   Add
                                 </Button>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   variant="outline"
                                   onClick={() => { setAddingToDomain(null); setNewSkillName(''); }}
                                 >
@@ -342,6 +416,77 @@ export default function MySkillsPage() {
             })}
           </AnimatePresence>
         </div>
+
+        {/* Quiz Dialog */}
+        <Dialog open={!!activeQuiz} onOpenChange={(open) => !open && setActiveQuiz(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span>{activeQuiz?.skill.name} Assessment</span>
+                <Badge variant="outline">Question {currentQuestionIndex + 1}/5</Badge>
+              </DialogTitle>
+              <DialogDescription>
+                Answer these 5 questions to determine your skill level.
+              </DialogDescription>
+            </DialogHeader>
+
+            {!quizFinished ? (
+              <div className="space-y-6 py-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Progress</span>
+                    <span>{Math.round((currentQuestionIndex / 5) * 100)}%</span>
+                  </div>
+                  <Progress value={(currentQuestionIndex / 5) * 100} className="h-2" />
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold leading-tight">
+                    {activeQuiz?.questions[currentQuestionIndex]?.text}
+                  </h4>
+                  <div className="grid gap-2">
+                    {activeQuiz?.questions[currentQuestionIndex]?.options.map((option, idx) => (
+                      <Button
+                        key={idx}
+                        variant="outline"
+                        className="justify-start h-auto py-3 px-4 text-left whitespace-normal hover:border-primary hover:bg-primary/5"
+                        onClick={() => handleAnswer(idx)}
+                      >
+                        <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center mr-3 text-xs shrink-0">
+                          {String.fromCharCode(65 + idx)}
+                        </span>
+                        {option}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6 py-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="w-10 h-10 text-success" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold mb-1">Assessment Complete!</h3>
+                  <p className="text-muted-foreground">
+                    Based on your performance, your level for {activeQuiz?.skill.name} has been updated.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                  <div className="text-sm text-muted-foreground mb-1">Your New Level</div>
+                  <div className="text-2xl font-bold text-primary">
+                    {skillLevels[activeQuiz?.skill.level || 0].label}
+                  </div>
+                </div>
+
+                <Button className="w-full" onClick={() => setActiveQuiz(null)}>
+                  Close and Continue
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Quick Actions */}
         <motion.div
