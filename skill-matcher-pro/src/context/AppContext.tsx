@@ -31,8 +31,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     userSkills: [],
     dsaProgress: { completed: [], inProgress: [], notStarted: [] },
     demoMode: false,
-    darkMode: false,
+    darkMode: true, // Default to dark mode
   });
+
+  React.useEffect(() => {
+    if (state.darkMode) {
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
 
   const setSelectedCompany = (id: string | null) => {
     setState((prev) => ({ ...prev, selectedCompany: id }));
