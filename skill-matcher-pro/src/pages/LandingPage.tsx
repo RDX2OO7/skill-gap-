@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, MouseEvent, useRef } from 'react';
+import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
@@ -111,16 +111,55 @@ function TypingText({
     );
 }
 
+import { HeroBackground } from '@/components/HeroBackground';
+
+// ... existing imports
+
+import { NovonexLogo } from '@/components/NovonexLogo';
+
 export default function LandingPage() {
     const { demoMode } = useApp();
+    const containerRef = useRef<HTMLDivElement>(null);
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+
+    function handleMouseMove({ clientX, clientY }: MouseEvent) {
+        if (!containerRef.current) return;
+        const { left, top } = containerRef.current.getBoundingClientRect();
+        mouseX.set(clientX - left);
+        mouseY.set(clientY - top);
+    }
 
     return (
         <div className="min-h-screen bg-background">
             <Header />
 
             {/* Hero Section */}
-            <section className="pt-32 pb-20 px-6">
-                <div className="container mx-auto max-w-5xl">
+            <section
+                className="relative pt-32 pb-20 px-6 overflow-hidden group"
+                onMouseMove={handleMouseMove}
+            >
+                {/* Purple Arc Background - Brighter */}
+                <div
+                    ref={containerRef}
+                    className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[140%] h-[700px] md:h-[800px] bg-background rounded-b-[50%] border-b border-purple-400/50 shadow-[0_20px_120px_rgba(168,85,247,0.4)] z-0 overflow-hidden"
+                >
+                    <div className="absolute inset-0 bg-gradient-to-b from-indigo-900/30 via-purple-700/20 to-transparent" />
+
+                    {/* Mouse following gradient - constrained inside the arc */}
+                    <motion.div
+                        className="absolute inset-0 opacity-100 will-change-transform"
+                        style={{
+                            background: useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, rgba(168,85,247,0.5), transparent 70%)`
+                        }}
+                    />
+
+                    {/* Glowing bottom edge effect */}
+                    <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-purple-400 to-transparent" />
+                    <div className="absolute bottom-[-1px] left-0 w-full h-[80px] bg-purple-500/40 blur-[40px]" />
+                </div>
+
+                <div className="container mx-auto max-w-5xl relative z-10">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -156,7 +195,7 @@ export default function LandingPage() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button variant="hero" size="xl" asChild>
+                            <Button variant="outline" size="xl" asChild>
                                 <Link to="/select">
                                     Check Your Readiness
                                     <ArrowRight className="w-5 h-5 ml-1" />
@@ -184,6 +223,9 @@ export default function LandingPage() {
                         </div>
                     </motion.div>
 
+                    {/* Ambient Hero Illustration - Replaced by HeroBackground */}
+                    {/* Handled mobile view separately if needed, but keeping it simple for now as per "right or left" on home page */}
+
                     {/* How it works */}
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
@@ -209,10 +251,10 @@ export default function LandingPage() {
                         </div>
                     </motion.div>
                 </div>
-            </section>
+            </section >
 
             {/* Features Section */}
-            <section className="py-20 px-6 bg-muted/50">
+            < section className="py-20 px-6 bg-muted/50" >
                 <div className="container mx-auto max-w-6xl">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -245,10 +287,10 @@ export default function LandingPage() {
                         ))}
                     </div>
                 </div>
-            </section>
+            </section >
 
             {/* CTA Section */}
-            <section className="py-20 px-6">
+            < section className="py-20 px-6" >
                 <div className="container mx-auto max-w-3xl text-center">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -267,20 +309,25 @@ export default function LandingPage() {
                         </Button>
                     </motion.div>
                 </div>
-            </section>
+            </section >
 
             {/* Footer */}
-            <footer className="py-8 px-6 border-t border-border">
+            {/* Footer */}
+            <footer className="py-8 px-6 border-t border-border bg-background/50 backdrop-blur-sm">
                 <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded gradient-hero flex items-center justify-center">
-                            <Hexagon className="w-4 h-4 text-primary-foreground" fill="currentColor" />
-                        </div>
-                        <span className="font-semibold">NOVONEX</span>
+                        <NovonexLogo className="w-6 h-6" />
+                        <span className="font-semibold tracking-tight">NOVONEX</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                        A hackathon prototype for internship readiness analysis
-                    </p>
+
+                    <div className="text-center md:text-right">
+                        <p className="text-sm font-bold text-foreground/90">
+                            &copy; {new Date().getFullYear()} All rights reserved by <span className="text-primary">RITESH(RDX)</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 font-medium">
+                            Designed to bridge the gap between academic learning and industry expectations.
+                        </p>
+                    </div>
                 </div>
             </footer>
         </div>

@@ -188,7 +188,16 @@ export default function AnalyzerPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20 transition-colors duration-500">
+        <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20 transition-colors duration-500 relative overflow-hidden">
+            {/* Ambient Background Image */}
+            <div className="absolute top-[-10%] right-[-10%] w-[500px] md:w-[800px] h-[500px] md:h-[800px] pointer-events-none z-0 opacity-80 mix-blend-screen select-none">
+                <img
+                    src="/cube-bg.png"
+                    alt="Abstract Cube Background"
+                    className="w-full h-full object-contain"
+                />
+            </div>
+
             <Header />
 
             <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
@@ -200,11 +209,17 @@ export default function AnalyzerPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="text-center mb-12"
                     >
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold mb-6 uppercase tracking-wider border border-primary/20">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            AI Intelligence Engine
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-purple-500/20 mb-6 shadow-[0_0_20px_rgba(168,85,247,0.1)]">
+                            <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                            <span className="text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-600 text-transparent bg-clip-text">
+                                AI Intelligence Engine
+                            </span>
                         </div>
-                        <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tight">Company Analyzer</h1>
+                        <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tight">
+                            <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 text-transparent bg-clip-text bg-[length:200%_auto] animate-gradient">
+                                Company Analyzer
+                            </span>
+                        </h1>
                         <p className="text-muted-foreground text-lg max-w-2xl mx-auto font-medium">
                             Deep research & gap analysis for <span className="text-primary font-bold">{companyName || 'any target role'}</span>.
                         </p>
