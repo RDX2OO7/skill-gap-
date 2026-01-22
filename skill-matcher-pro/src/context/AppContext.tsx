@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { UserSkill, mockUserSkills, mockDSAProgress, companyTypes, roles } from '@/lib/mockData';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 interface AppState {
   selectedCompany: string | null;
@@ -8,6 +10,8 @@ interface AppState {
   dsaProgress: typeof mockDSAProgress;
   demoMode: boolean;
   darkMode: boolean;
+  user: User | null;
+  authLoading: boolean;
 }
 
 interface AppContextType extends AppState {
@@ -20,6 +24,7 @@ interface AppContextType extends AppState {
   toggleDarkMode: () => void;
   loadDemoData: () => void;
   completeDSATopic: (topicId: string) => void;
+  setUser: (user: User | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -32,7 +37,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dsaProgress: { completed: [], inProgress: [], notStarted: [] },
     demoMode: false,
     darkMode: true, // Default to dark mode
+    user: null,
+    authLoading: true,
   });
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setState(prev => ({ ...prev, user, authLoading: false }));
+    });
+    return () => unsubscribe();
+  }, []);
 
   React.useEffect(() => {
     if (state.darkMode) {
@@ -138,6 +152,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toggleDarkMode,
         loadDemoData,
         completeDSATopic,
+        setUser: (user) => setState(prev => ({ ...prev, user })),
       }}
     >
       {children}

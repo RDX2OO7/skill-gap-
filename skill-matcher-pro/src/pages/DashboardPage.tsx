@@ -10,7 +10,8 @@ import { roles, companyTypes, calculateAlignment, getSkillGap } from '@/lib/mock
 import { ArrowRight, Target, TrendingUp, BookOpen, Sparkles } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { selectedCompany, selectedRole, userSkills } = useApp();
+  const { selectedCompany, selectedRole, userSkills, user } = useApp();
+  const userName = user?.displayName?.split(' ')[0] || "User";
 
   const role = roles.find((r) => r.id === selectedRole);
   const company = companyTypes.find((c) => c.id === selectedCompany);
@@ -50,7 +51,7 @@ export default function DashboardPage() {
               <Target className="w-4 h-4" />
               {company?.name} • {role?.name}
             </div>
-            <h1 className="text-3xl font-bold">Your Skill Alignment Dashboard</h1>
+            <h1 className="text-3xl font-bold">Welcome, {userName}! Your Skill Alignment Dashboard</h1>
           </motion.div>
 
           {/* Main Stats */}

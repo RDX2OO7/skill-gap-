@@ -4,7 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/context/AppContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
 import SelectPage from "./pages/SelectPage";
 import ProfilePage from "./pages/ProfilePage";
 import DashboardPage from "./pages/DashboardPage";
@@ -24,15 +26,48 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/select" element={<SelectPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/dsa" element={<DSAPage />} />
-            <Route path="/plan" element={<PlanPage />} />
-            <Route path="/simulator" element={<SimulatorPage />} />
-            <Route path="/analyzer" element={<AnalyzerPage />} />
-            <Route path="/my-skills" element={<MySkillsPage />} />
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/landing" element={<LandingPage />} />
+            <Route path="/select" element={
+              <ProtectedRoute>
+                <SelectPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dsa" element={
+              <ProtectedRoute>
+                <DSAPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/plan" element={
+              <ProtectedRoute>
+                <PlanPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/simulator" element={
+              <ProtectedRoute>
+                <SimulatorPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/analyzer" element={
+              <ProtectedRoute>
+                <AnalyzerPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-skills" element={
+              <ProtectedRoute>
+                <MySkillsPage />
+              </ProtectedRoute>
+            } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
