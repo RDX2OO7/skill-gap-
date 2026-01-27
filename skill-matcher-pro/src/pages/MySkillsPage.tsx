@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useApp } from '@/context/AppContext';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -28,10 +29,7 @@ const iconMap: Record<string, React.ComponentType<any>> = {
 };
 
 export default function MySkillsPage() {
-  const [domains, setDomains] = useState<SkillDomain[]>(() => {
-    const saved = localStorage.getItem('mySkillDomains');
-    return saved ? JSON.parse(saved) : defaultDomains;
-  });
+  const { userDomains: domains, updateDomains } = useApp();
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
   const [newSkillName, setNewSkillName] = useState('');
   const [addingToDomain, setAddingToDomain] = useState<string | null>(null);
@@ -46,12 +44,8 @@ export default function MySkillsPage() {
   const [answers, setAnswers] = useState<number[]>([]);
   const [quizFinished, setQuizFinished] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem('mySkillDomains', JSON.stringify(domains));
-  }, [domains]);
-
   const updateSkillLevel = (domainId: string, skillId: string, level: number) => {
-    setDomains(prev => prev.map(domain => {
+    const nextDomains = domains.map(domain => {
       if (domain.id !== domainId) return domain;
       return {
         ...domain,
@@ -59,13 +53,14 @@ export default function MySkillsPage() {
           skill.id === skillId ? { ...skill, level } : skill
         )
       };
-    }));
+    });
+    updateDomains(nextDomains);
   };
 
   const addCustomSkill = (domainId: string) => {
     if (!newSkillName.trim()) return;
 
-    setDomains(prev => prev.map(domain => {
+    const nextDomains = domains.map(domain => {
       if (domain.id !== domainId) return domain;
       return {
         ...domain,
@@ -75,7 +70,8 @@ export default function MySkillsPage() {
           level: 0
         }]
       };
-    }));
+    });
+    updateDomains(nextDomains);
     setNewSkillName('');
     setAddingToDomain(null);
   };
@@ -119,13 +115,14 @@ export default function MySkillsPage() {
   };
 
   const removeSkill = (domainId: string, skillId: string) => {
-    setDomains(prev => prev.map(domain => {
+    const nextDomains = domains.map(domain => {
       if (domain.id !== domainId) return domain;
       return {
         ...domain,
         skills: domain.skills.filter(skill => skill.id !== skillId)
       };
-    }));
+    });
+    updateDomains(nextDomains);
   };
 
   const getDomainStats = (domain: SkillDomain) => {
@@ -341,10 +338,10 @@ export default function MySkillsPage() {
                                     <div
                                       key={step}
                                       className={`h-full flex-1 rounded-sm transition-colors duration-500 ${skill.level >= step
-                                          ? (skill.level === 4 ? 'bg-purple-500' :
-                                            skill.level === 3 ? 'bg-success' :
-                                              skill.level === 2 ? 'bg-warning' : 'bg-blue-500')
-                                          : 'bg-black/5'
+                                        ? (skill.level === 4 ? 'bg-purple-500' :
+                                          skill.level === 3 ? 'bg-success' :
+                                            skill.level === 2 ? 'bg-warning' : 'bg-blue-500')
+                                        : 'bg-black/5'
                                         }`}
                                     />
                                   ))}
@@ -355,9 +352,9 @@ export default function MySkillsPage() {
                                 <Badge
                                   variant={skill.level > 0 ? 'default' : 'secondary'}
                                   className={`text-xs ${skill.level === 4 ? 'bg-purple-500' :
-                                      skill.level === 3 ? 'bg-success' :
-                                        skill.level === 2 ? 'bg-warning' :
-                                          skill.level === 1 ? 'bg-blue-500' : ''
+                                    skill.level === 3 ? 'bg-success' :
+                                      skill.level === 2 ? 'bg-warning' :
+                                        skill.level === 1 ? 'bg-blue-500' : ''
                                     }`}
                                 >
                                   {skillLevels[skill.level].label}
