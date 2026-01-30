@@ -6,29 +6,70 @@ import { useApp } from '@/context/AppContext';
 import { SkillCard } from '@/components/SkillCard';
 import { AlignmentScore } from '@/components/AlignmentScore';
 import { RadarChart } from '@/components/RadarChart';
-import { roles, companyTypes, calculateAlignment, getSkillGap } from '@/lib/mockData';
+import { roles, companyTypes, calculateAlignment, getSkillGap, UserSkill } from '@/lib/mockData';
 import { ArrowRight, Target, TrendingUp, BookOpen, Sparkles } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { selectedCompany, selectedRole, userSkills, user } = useApp();
+  const { selectedCompany, selectedRole, userSkills, userDomains, user } = useApp();
   const userName = user?.displayName?.split(' ')[0] || "User";
+
+  const getSkillLevel = (skillName: string, skillId?: string) => {
+    const name = skillName.toLowerCase();
+    const id = skillId?.toLowerCase();
+
+    // 1. Check Profile
+    const profileSkill = userSkills.find(s =>
+      s.skillId.toLowerCase() === id ||
+      s.name.toLowerCase() === name ||
+      name.includes(s.name.toLowerCase())
+    );
+    if (profileSkill && profileSkill.level > 0) return profileSkill.level;
+
+    // 2. Check Vault
+    for (const domain of userDomains) {
+      const vaultSkill = domain.skills.find(s =>
+        s.id.toLowerCase() === id ||
+        s.name.toLowerCase() === name ||
+        name.includes(s.name.toLowerCase())
+      );
+      if (vaultSkill && vaultSkill.level > 0) return vaultSkill.level;
+    }
+
+    return 0;
+  };
 
   const role = roles.find((r) => r.id === selectedRole);
   const company = companyTypes.find((c) => c.id === selectedCompany);
-  const alignmentScore = role ? calculateAlignment(userSkills, role.requiredSkills) : 0;
+
+  // Derive allUserSkills for calculateAlignment
+  const derivedSkills = role?.requiredSkills.map(req => ({
+    skillId: req.skillId,
+    name: req.name,
+    level: getSkillLevel(req.name, req.skillId),
+    category: 'technical' as const
+  })) || [];
+
+  const alignmentScore = role ? calculateAlignment(derivedSkills, role.requiredSkills) : 0;
 
   const radarData = role?.requiredSkills.map((req) => {
-    const userSkill = userSkills.find((s) => s.skillId === req.skillId);
+    const level = getSkillLevel(req.name, req.skillId);
     return {
       label: req.name.split('/')[0].slice(0, 10),
-      value: userSkill?.level || 0,
+      value: level,
       maxValue: req.requiredLevel,
     };
   }) || [];
 
   const skillStats = role?.requiredSkills.reduce(
     (acc, req) => {
-      const gap = getSkillGap(userSkills.find((s) => s.skillId === req.skillId), req);
+      const level = getSkillLevel(req.name, req.skillId);
+      const userSkill: UserSkill = {
+        skillId: req.skillId,
+        name: req.name,
+        level,
+        category: req.category
+      };
+      const gap = getSkillGap(userSkill, req);
       acc[gap]++;
       return acc;
     },
@@ -111,7 +152,7 @@ export default function DashboardPage() {
             <h2 className="text-xl font-semibold mb-4">Skill-by-Skill Analysis</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {role?.requiredSkills.map((req, index) => {
-                const userSkill = userSkills.find((s) => s.skillId === req.skillId);
+                const level = getSkillLevel(req.name, req.skillId);
                 return (
                   <motion.div
                     key={req.skillId}
@@ -121,7 +162,7 @@ export default function DashboardPage() {
                   >
                     <SkillCard
                       name={req.name}
-                      userLevel={userSkill?.level || 0}
+                      userLevel={level}
                       requiredLevel={req.requiredLevel}
                     />
                   </motion.div>

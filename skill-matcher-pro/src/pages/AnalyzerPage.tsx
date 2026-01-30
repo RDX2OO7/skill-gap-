@@ -6,6 +6,8 @@ import { Header } from '@/components/Header';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { analyzeCompanyWithOpenRouter } from '@/lib/openRouter';
+import { analyzeCompanyWithGemini } from '@/lib/gemini';
+import { analyzeCompanyWithGroq } from '@/lib/groq';
 import { useApp } from '@/context/AppContext';
 import {
     ResponsiveContainer,
@@ -59,28 +61,59 @@ const staggerChildren = {
 };
 
 export default function AnalyzerPage() {
-    const { userSkills } = useApp();
+    const { userSkills, userDomains } = useApp();
     const [companyName, setCompanyName] = useState('');
     const [roleName, setRoleName] = useState('');
-    const [apiKey, setApiKey] = useState(import.meta.env.VITE_OPENROUTER_API_KEY || '');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysis, setAnalysis] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
-    const [showKeyInput, setShowKeyInput] = useState(!import.meta.env.VITE_OPENROUTER_API_KEY);
+    const [statusMessage, setStatusMessage] = useState<string>('');
+    const [provider, setProvider] = useState<'openrouter' | 'gemini' | 'groq'>('openrouter');
+    const [openRouterKey, setOpenRouterKey] = useState(import.meta.env.VITE_OPENROUTER_API_KEY || '');
+    const [geminiKey, setGeminiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
+    const [groqKey, setGroqKey] = useState(import.meta.env.VITE_GROQ_API_KEY || '');
+    const [showKeyInput, setShowKeyInput] = useState(!import.meta.env.VITE_OPENROUTER_API_KEY && !import.meta.env.VITE_GEMINI_API_KEY && !import.meta.env.VITE_GROQ_API_KEY);
+
+    const apiKey = provider === 'openrouter' ? openRouterKey : provider === 'gemini' ? geminiKey : groqKey;
+    const setApiKey = provider === 'openrouter' ? setOpenRouterKey : provider === 'gemini' ? setGeminiKey : setGroqKey;
 
     const handleAnalyze = async () => {
         if (!companyName.trim() || !roleName.trim()) return;
 
-        if (apiKey) {
-            (window as any).OPENROUTER_API_KEY = apiKey;
+        if (provider === 'openrouter' && openRouterKey) {
+            (window as any).OPENROUTER_API_KEY = openRouterKey;
+        } else if (provider === 'gemini' && geminiKey) {
+            (window as any).GEMINI_API_KEY = geminiKey;
+        } else if (provider === 'groq' && groqKey) {
+            (window as any).GROQ_API_KEY = groqKey;
         }
 
         setIsAnalyzing(true);
         setError(null);
         setAnalysis(null);
+        setStatusMessage('Connecting to AI Neural Network...');
 
         try {
-            const result = await analyzeCompanyWithOpenRouter(companyName.trim(), roleName.trim());
+            let result;
+            if (provider === 'openrouter') {
+                result = await analyzeCompanyWithOpenRouter(
+                    companyName.trim(),
+                    roleName.trim(),
+                    (status) => setStatusMessage(status)
+                );
+            } else if (provider === 'gemini') {
+                result = await analyzeCompanyWithGemini(
+                    companyName.trim(),
+                    roleName.trim(),
+                    (status) => setStatusMessage(status)
+                );
+            } else {
+                result = await analyzeCompanyWithGroq(
+                    companyName.trim(),
+                    roleName.trim(),
+                    (status) => setStatusMessage(status)
+                );
+            }
             setAnalysis(result.data);
         } catch (err: any) {
             console.error('Analysis Error:', err);
@@ -101,20 +134,38 @@ export default function AnalyzerPage() {
 
         return allReqs.map((req: any) => {
             const skillName = (req.name || req.skill || '').toLowerCase();
-            const userSkill = userSkills.find(
+
+            // 1. Search in flat userSkills (Profile)
+            const userSkillProfile = userSkills.find(
                 (s) => s.name.toLowerCase() === skillName ||
                     s.skillId.toLowerCase() === skillName ||
                     skillName.includes(s.name.toLowerCase())
             );
 
+            let userLevel = userSkillProfile?.level || 0;
+
+            // 2. Search in userDomains (Skill Vault) if profile level is low or not found
+            if (userLevel === 0) {
+                for (const domain of userDomains) {
+                    const vaultSkill = domain.skills.find(
+                        (s) => s.name.toLowerCase() === skillName ||
+                            s.id.toLowerCase() === skillName ||
+                            skillName.includes(s.name.toLowerCase())
+                    );
+                    if (vaultSkill && vaultSkill.level > userLevel) {
+                        userLevel = vaultSkill.level;
+                    }
+                }
+            }
+
             return {
                 subject: req.name || req.skill,
                 required: Number(req.level) || 1,
-                yours: userSkill?.level || 0,
+                yours: userLevel,
                 fullMark: 4,
             };
         });
-    }, [analysis, userSkills]);
+    }, [analysis, userSkills, userDomains]);
 
     const renderValue = (val: any): React.ReactNode => {
         if (val === null || val === undefined) return null;
@@ -239,15 +290,35 @@ export default function AnalyzerPage() {
                                 </div>
                                 <div className="flex-1 text-center md:text-left">
                                     <h3 className="text-lg font-bold mb-1">Secure AI Activation</h3>
-                                    <p className="text-sm text-muted-foreground font-medium">Enter your OpenRouter key to unlock Gemini 2.0 capabilities.</p>
+                                    <p className="text-sm text-muted-foreground font-medium">Select provider & enter key to unlock analysis capabilities.</p>
+                                    <div className="flex gap-2 mt-3">
+                                        <button
+                                            onClick={() => setProvider('openrouter')}
+                                            className={`px-3 py-1 text-[10px] font-bold rounded-full border transition-all ${provider === 'openrouter' ? 'bg-primary border-primary text-primary-foreground' : 'bg-transparent border-border text-muted-foreground hover:border-primary/50'}`}
+                                        >
+                                            OPENROUTER
+                                        </button>
+                                        <button
+                                            onClick={() => setProvider('gemini')}
+                                            className={`px-3 py-1 text-[10px] font-bold rounded-full border transition-all ${provider === 'gemini' ? 'bg-primary border-primary text-primary-foreground' : 'bg-transparent border-border text-muted-foreground hover:border-primary/50'}`}
+                                        >
+                                            GOOGLE AI STUDIO
+                                        </button>
+                                        <button
+                                            onClick={() => setProvider('groq')}
+                                            className={`px-3 py-1 text-[10px] font-bold rounded-full border transition-all ${provider === 'groq' ? 'bg-primary border-primary text-primary-foreground' : 'bg-transparent border-border text-muted-foreground hover:border-primary/50'}`}
+                                        >
+                                            GROQ (ULTRA FAST)
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex w-full md:w-auto gap-3">
                                     <Input
                                         type="password"
-                                        placeholder="sk-or-..."
+                                        placeholder={provider === 'openrouter' ? "sk-or-..." : provider === 'gemini' ? "AIzaSy..." : "gsk_..."}
                                         value={apiKey}
                                         onChange={(e) => setApiKey(e.target.value)}
-                                        className="h-11 md:w-64 bg-background/50 border-border focus:border-primary/50 transition-all"
+                                        className="h-11 md:w-64 bg-background/50 border-border focus:border-primary/50 transition-all font-mono"
                                     />
                                     <Button size="lg" className="h-11 px-6 font-bold shadow-lg shadow-primary/20" onClick={() => setShowKeyInput(false)} disabled={!apiKey}>
                                         Activate
@@ -300,15 +371,18 @@ export default function AnalyzerPage() {
                             size="lg"
                             className="w-full h-16 text-lg font-bold shadow-[0_10px_40px_rgba(var(--primary),0.2)] transition-all hover:scale-[1.01] active:scale-[0.99] rounded-2xl relative z-10 group overflow-hidden"
                             onClick={handleAnalyze}
-                            disabled={isAnalyzing || !companyName.trim() || !roleName.trim() || (!apiKey && !import.meta.env.VITE_OPENROUTER_API_KEY)}
+                            disabled={isAnalyzing || !companyName.trim() || !roleName.trim() || !apiKey}
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/80 to-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="relative flex items-center justify-center">
                                 {isAnalyzing ? (
-                                    <>
-                                        <Loader2 className="w-6 h-6 mr-3 animate-spin" />
-                                        <span className="animate-pulse">Analyzing Cultural Fit...</span>
-                                    </>
+                                    <div className="flex flex-col items-center">
+                                        <div className="flex items-center mb-1">
+                                            <Loader2 className="w-6 h-6 mr-3 animate-spin text-white" />
+                                            <span className="animate-pulse">AI Agent Active...</span>
+                                        </div>
+                                        <span className="text-[10px] uppercase tracking-[0.2em] opacity-70 font-bold">{statusMessage}</span>
+                                    </div>
                                 ) : (
                                     <>
                                         <Target className="w-6 h-6 mr-3" />
@@ -485,7 +559,7 @@ export default function AnalyzerPage() {
                                     <Button
                                         variant="ghost"
                                         className="text-muted-foreground hover:text-foreground text-sm font-bold uppercase tracking-[0.2em] transition-all hover:tracking-[0.3em]"
-                                        onClick={() => { setAnalysis(null); setError(null); }}
+                                        onClick={() => { setAnalysis(null); setError(null); setShowKeyInput(true); }}
                                     >
                                         Reset & Perform New Scan
                                     </Button>
