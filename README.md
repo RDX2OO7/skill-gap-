@@ -157,11 +157,19 @@ Make sure you have:
   - OpenRouter
   - GROQ 
 
-### Clone the Repository
+### Clone the Repository and Run locally
 
 ```bash
 git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+cd skill-matcher-pro
 npm run dev
 ```
 ----
+
+### get Api Key 
+
+- OPEN ROUTER:- https://openrouter.ai
+- GEMINI :-  https://aistudio.google.com/app/api-keys
+- GROQ :- https://groq.com/
+
+
